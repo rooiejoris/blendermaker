@@ -1,0 +1,17 @@
+
+##################
+# Blender Maker. #
+##################
+
+Blender Maker is a Blender Python for artworks with a open hardware 3d printer, reprap like.
+
+License GPL.
+
+** TODO:
+
+- correct bugs.
+- add gcode support.
+
+
+
+
