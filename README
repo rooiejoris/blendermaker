@@ -5,6 +5,9 @@
 
 Blender Maker is a Blender Python for artworks with a open hardware 3d printer, reprap like.
 
+- Is uses the Export Import stl:
+http://wiki.blender.org/index.php/Extensions:2.5/Py/Scripts/Import-Export/STL
+
 License GPL.
 
 ** TODO:
