@@ -1,5 +1,4 @@
 # *** Notes ***
-# mirar space_view3d_align_tools.py
 #
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
@@ -37,6 +36,8 @@ bl_info = {
 '''
 -------------------------------------------------------------------------
 Rev 0.1 Blender 2.5 support.
+Is integrates addons from:
+- Import/Export STL addon.
 -------------------------------------------------------------------------
 '''
 
@@ -52,6 +53,9 @@ from bpy.props import StringProperty, BoolProperty, CollectionProperty
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from bpy.props import IntProperty, BoolProperty, FloatVectorProperty
 import random
+import math
+import cmath
+extrusion_diameter = 0.4 
 
 ######
 # UI #
@@ -87,7 +91,7 @@ class BMUI(bpy.types.Panel):
         col = layout.column_flow(columns=5,align=True)
         row.operator("export_mesh.stl", text="Save")
         row.operator("import_mesh.stl", text="Load")
-        
+
         box = layout.separator()        
         
         #select view from.
@@ -126,9 +130,43 @@ class BMUI(bpy.types.Panel):
         randomMag = bpy.context.scene.randomMagnitude
 
 
+class BMUI_GCODE(bpy.types.Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+    bl_label = "Blender Maker: GCODE"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.object
+        scene = context.scene
+        col = layout.column(align=True)
+        col.label(text="GCODE:")
+        row = col.row()
+        row.operator("export.gcode", text="Export")
+
+
 #############
 # Operators #
 #############
+
+
+class ExportGcode(bpy.types.Operator):
+    ''''''
+    bl_idname = "export.gcode"
+    bl_label = "Align Selected To Active"
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object != None
+
+    def execute(self, context):
+        print("In export GCODE")
+        print("executing.")
+        import_gcode("/home/miguel/objects/test2.gcode")
+        return {'FINISHED'}
+
+
 
 class AlignOperator(bpy.types.Operator):
     ''''''
@@ -156,32 +194,10 @@ class randomizeObject(bpy.types.Operator):
 
     def execute(self, context):
         print("in randomize operator")
-        randomize()
+        randomize2()
         return {'FINISHED'}
 
-# class saveFile(bpy.types.Operator):
-#     ''''''
-#     bl_idname = "file.save"
-#     bl_label = "Save the object in stl file"
 
-#     @classmethod
-#     def poll(cls, context):
-        
-#         return context.active_object != None
-
-#     def execute(self, context):
-#         print("In save file operator")    
-#         layout = self.layout
-#         obj = context.object
-#         mesh=bpy.data.scenes[0].objects[obj.name].data
-        
-#         print()
-#         #write_stl("ficherosalva.stl",mesh.faces)
-        
-#         return {'FINISHED'}
-
-
-## file exporter ##
 class ExportSTL(bpy.types.Operator, ExportHelper):
     '''
     Save STL triangle mesh data from the active object
@@ -203,11 +219,12 @@ class ExportSTL(bpy.types.Operator, ExportHelper):
         from . import stl_utils
         from . import blender_utils
         import itertools
-
+        
+        print("in export")
         faces = itertools.chain.from_iterable(
             blender_utils.faces_from_mesh(ob, self.apply_modifiers)
             for ob in context.selected_objects)
-
+        
         stl_utils.write_stl(self.filepath, faces, self.ascii)
 
         return {'FINISHED'}
@@ -231,6 +248,11 @@ def scale_z(self, context):
     obj = context.object
     obj.scale[2] = scaleZval
 
+def ASCIICheck(self, context):
+    print("** in scale ASCII check")
+    #ASCIIcheckstate = true
+
+
 
 ##############
 # Registring #
@@ -241,27 +263,32 @@ def register():
     bpy.utils.register_class(AlignOperator)
     bpy.utils.register_class(randomizeObject)
     bpy.utils.register_class(BMUI)
+    bpy.utils.register_class(BMUI_GCODE)
     bpy.utils.register_class(ExportSTL)
-    
+    bpy.utils.register_class(ExportGcode)
+    #bpy.types.INFO_MT_file_import.append(menu_func)
+
+
     scnType = bpy.types.Scene
     scnType.scaleX = bpy.props.FloatProperty( name = "X", 
-                                                     default = 0, min = -20, max = 20, 
+                                                     default = 10, min = -20, max = 20, 
                                                      description = "Scale object in X axys" ,update=scale_x)
     
     scnType = bpy.types.Scene
     scnType.scaleY = bpy.props.FloatProperty( name = "Y", 
-                                                     default = 0, min = -20, max = 20, 
+                                                     default = 1, min = -20, max = 20, 
                                                      description = "Scale object in Y axys",update=scale_y)
     
     scnType = bpy.types.Scene
     scnType.scaleZ = bpy.props.FloatProperty( name = "Z", 
-                                                     default = 0, min = -20, max = 20, 
+                                                     default = 1, min = -20, max = 20, 
                                                      description = "Scale object in Z axys",update=scale_z)
     
     scnType = bpy.types.Scene
     scnType.randomMagnitude = bpy.props.IntProperty( name = "Jump Vertices", 
                                                      default = 0, min = -20, max = 20, 
                                                      description = "Randomize object")
+    
 
 
     scale = FloatVectorProperty(name="Scale",
@@ -276,6 +303,9 @@ def unregister():
     bpy.utils.register_class(randomizeObject)
     bpy.utils.register_class(BMUI)
     bpy.utils.register_class(ExportSTL)
+    bpy.utils.register_class(ExportGcode)
+    #bpy.types.INFO_MT_file_import.append(menu_func)
+
     pass
 
 
@@ -363,17 +393,17 @@ def randomize():
     print("** The vertices:")
     print("top="+str(topz)+",bottom="+str(bottomz))
 
-        #pass to all the vertices.
+    #pass to all the vertices.
     for vertice in copyverts:
-            #top and bottom layers.
+        #top and bottom layers.
         if(vertice.co[2]>bottomz and vertice.co[2]<topz):
             verticeact=vertice
             if not(verticeact in covertices):
                 covertices.append(vertice)
-                randx=random.uniform(-5,5)
-                randy=random.uniform(-5,5)
+                randx=random.uniform(-0.1,0.1)
+                randy=random.uniform(-0.1,0.1)
                 index=0
-                step=randomMag
+                step=randomMag-1
                 for index,verticeref in enumerate(copyverts):
                     if(step == 0):
                         if verticeref.co[0]==verticeact.co[0]:
@@ -385,3 +415,382 @@ def randomize():
                     else:
                         print("step salta")
                     step=step-1
+
+
+def randomize2():
+    obj = context.object
+    
+    mesh = obj.data
+
+    copyverts=mesh.vertices[:]
+    covertices=[]
+
+    topz=copyverts[0].co[2]
+    bottomz=copyverts[0].co[2]
+        
+    #find topz and bottomz
+    for vertice in copyverts:
+        if(vertice.co[2]>topz):
+            topz=vertice.co[2]
+        elif(vertice.co[2]<bottomz):
+            bottomz=vertice.co[2]
+                
+    print("** The vertices:")
+    print("top="+str(topz)+",bottom="+str(bottomz))
+
+    step=randomMag
+
+    #pass to all the vertices.
+    for index,verticeref in enumerate(copyverts):
+        #print("********X:"+str(verticeref.co[0])+";Y:"+str(verticeref.co[1])+";Z:"+str(verticeref.co[2]))        
+        
+        if(step==0):
+            r,phi=cmath.polar(complex(verticeref.co[0],verticeref.co[1]))
+            r=random.uniform(-10,10)+r
+            x=cmath.rect(r,phi)
+            mesh.vertices[index].co[0]= x.real
+            mesh.vertices[index].co[1]= x.imag
+            step=randomMag
+        else:
+            step=step-1
+
+
+#################################
+#CLASSSSSSSSSSSSSSSSS  and GCODE#
+#################################
+class tool:
+    def __init__(self,name='null tool'):
+        self.name = name
+
+class move():
+    def __init__(self,pos):
+        self.pos = pos
+        p = []
+        p.append(self.pos['X'])
+        p.append(self.pos['Y'])
+        p.append(self.pos['Z'])
+        self.point = p
+    
+class fast_move(move):
+    def __init__(self,pos):
+        move.__init__(self,pos)
+        
+class tool_on:
+    def __init__(self,val):
+        pass
+
+class tool_off:
+    def __init__(self,val):
+        pass
+
+class layer:
+    def __init__(self):
+        print('layer')
+        pass
+
+class setting:
+    def __init__(self,val):
+        pass
+
+class set_temp(setting):
+    def __init__(self,val):
+        setting.__init__(self,val)
+ 
+class tool_change():
+    def __init__(self,val):
+        self.val = val
+
+class undef:
+    def __init__(self,val):
+        pass
+
+
+codes = {
+    '(':{
+        '</surroundingLoop>)' : undef,
+        '<surroundingLoop>)' : undef,
+        '<boundaryPoint>' : undef,
+        '<loop>)' : undef,
+        '</loop>)' : undef,
+        '<layer>)' : undef,
+        '</layer>)' : undef,
+        '<layer>' : undef,
+        '<perimeter>)' : undef,
+        '</perimeter>)' : undef, 
+        '<bridgelayer>)' : undef,
+        '</bridgelayer>)' : undef,
+        '</extrusion>)' :undef                     
+    },
+    'G':{
+        '0': fast_move,
+        '1': move,
+        '01' : move,
+        '04': undef,
+        '21': setting,
+        '28': setting, # go home
+        '92': setting, # not sure what this is 
+        '90': setting
+    },
+    'M':{
+        '01' : undef,
+        '6' : undef,
+        '101' : tool_on,
+        '103' : tool_off,
+        '104' : set_temp,
+        '105' : undef,
+        '106' : undef,
+        '107' : undef,
+        '108' : undef,
+        '109' : undef, # what is this ? 
+        '113' : undef, # what is this ? 
+        '115' : undef, # what is this ? 
+        '116' : undef, # what is this ? 
+        '117' : undef # what is this ? 
+    },
+    'T':{
+        '0;' : tool_change
+    }
+}
+
+class driver:
+    # takes action object list and runs through it 
+    def __init__(self):
+        pass
+    
+    def drive(self):
+        pass 
+    
+    def load_data(self,data):
+        self.data = data
+
+    
+def vertsToPoints(Verts):
+    # main vars
+    vertArray = []
+    for v in Verts:
+        vertArray += v
+        vertArray.append(0)
+    return vertArray
+
+def create_poly(verts,counter):
+    splineType = 'POLY'
+    name = 'skein'+str(counter) 
+    pv = vertsToPoints(verts)
+    # create curve
+    scene = bpy.context.scene
+    newCurve = bpy.data.curves.new(name, type = 'CURVE')
+    newSpline = newCurve.splines.new(type = splineType)
+    newSpline.points.add(int(len(pv)*0.25 - 1))
+    newSpline.points.foreach_set('co',pv)
+    newSpline.use_endpoint_u = True
+    
+    # create object with newCurve
+    newCurve.bevel_object = bpy.data.objects['profile']
+    newCurve.dimensions = '3D'
+    new_obj = bpy.data.objects.new(name, newCurve) # object
+    scene.objects.link(new_obj) # place in active scene
+    return new_obj
+    
+class blender_driver(driver):
+     def __init__(self):
+         driver.__init__(self)
+         
+     def drive(self):        
+        print('building curves')
+        # info 
+        count = 0 
+        for i in self.data:
+            if isinstance(i,layer):
+                count += 1
+        print('has '+str(count)+' layers')
+        
+        
+        print('creating poly lines')
+        if 'profile' in bpy.data.objects:
+            print('profile exisits')
+        else:
+            bpy.ops.curve.primitive_bezier_circle_add()
+            curve = bpy.context.selected_objects[0]
+            d = extrusion_diameter
+            curve.scale = [d,d,d]
+            curve.name = 'profile'
+            curve.data.resolution_u = 2
+            curve.data.render_resolution_u = 2
+            
+        poly = []
+        layers = []
+        this_layer = []
+        counter = 1
+        global thing
+        for i in self.data:
+            if isinstance(i,move):
+                #print(i.point)
+                poly.append(i.point)
+            if isinstance(i,tool_off):
+                if len(poly) > 0:
+                    counter += 1
+                    pobj = create_poly(poly,counter)
+                    this_layer.append(pobj)
+                poly = []
+            if isinstance(i,layer):
+                print('layer '+str(len(layers)))
+                layers.append(this_layer)
+                this_layer = []
+        layers.append(this_layer)
+        
+        print('animating build')
+        
+        s = bpy.context.scene
+        # make the material 
+        if 'Extrusion' in bpy.data.materials:
+            mt = bpy.data.materials['Extrusion']
+        else:
+            # make new material
+            bpy.ops.material.new()
+            mt = bpy.data.materials[-1]
+            mt.name = 'Extrusion'
+        
+        s.frame_end = len(layers)
+        # hide everything at frame 0
+        s.frame_set(0)
+        
+        for i in range(len(layers)):
+            for j in layers[i]:
+                j.hide = True
+                j.hide_render = True
+                j.keyframe_insert("hide")
+                j.keyframe_insert("hide_render")
+                # assign the material 
+                j.active_material = mt
+        
+        # go through the layers and make them reappear
+        for i in range(len(layers)):
+            s.frame_set(i)
+            print('frame '+str(i))
+            for j in layers[i]:
+                j.hide = False
+                j.hide_render = False
+                j.keyframe_insert("hide")
+                j.keyframe_insert("hide_render")
+
+
+
+class machine:
+
+    def __init__(self,axes):
+        self.axes = axes
+        self.axes_num = len(axes)
+        self.data = []
+        self.cur = {} 
+        self.tools = []
+        self.commands = []
+        self.driver = driver()
+
+    def add_tool(self,the_tool):
+        self.tools.append(the_tool)
+        
+    def remove_comments(self):
+        tempd=[]
+        for st in self.data:
+            startcommentidx= st.find('(')
+            if startcommentidx == 0 :  #line begins with a comment 
+                split1=st.partition(')')
+                st = ''
+            if startcommentidx > 0:   # line has an embedded comment to remove
+                split1=st.partition('(')
+                split2=split1[2].partition(')')
+                st = split1[0]+split2[2]
+            if st != '':    
+                tempd.append(st)
+            #print("...>",st)
+        self.data=tempd
+        
+    
+
+    def import_file(self,file_name):
+        print('opening '+file_name)
+        f = open(file_name)
+        #for line in f:
+        #    self.data.append(self.remove_comments(line))
+        self.data=f.readlines()
+        f.close()
+        self.remove_comments()
+        
+        # uncomment to see the striped file
+        #k = open('c:/davelandia/blender/out1.txt','w')
+        #k.writelines(self.data)
+        #k.close()
+        
+        print(str(len(self.data))+' lines')
+        
+                
+    def process(self):
+        # zero up the machine
+        pos = {}
+        for i in self.axes:
+            pos[i] = 0
+            self.cur[i] = 0
+        for i in self.data:
+            i=i.strip()
+            print( "Parsing Gcode line ", i)   
+            #print(pos)
+            tmp = i.split()
+            if(len(tmp)==0):
+                tmp=['E','0','0']
+                print("No processable")
+            #print(type.tmp)
+            command = tmp[0][0]
+            com_type = tmp[0][1:]
+            if command in codes:
+                if com_type in codes[command]:
+                    #print('good =>'+command+com_type)
+                    for j in tmp[1:]:
+                        axis = j[0]
+                        if axis == ';':
+                            # ignore comments
+                            break
+                        if axis in self.axes:
+                            val = float(j[1:])
+                            pos[axis] = val
+                            if self.cur['Z'] != pos['Z']:
+                                self.commands.append(layer())
+                            self.cur[axis] = val
+                    # create action object
+                    #print(pos)
+                    act = codes[command][com_type](pos)
+                    #print(act)
+                    self.commands.append(act)
+                    #if isinstance(act,move):
+                        #print(act.coord())
+                else:
+                    print(i)
+                    print(' G/M/T Code for this line is unknowm ' + com_type)
+                    #break
+            else:
+                
+                print(' line does not have a G/M/T Command '+ str(command))
+                #break
+
+def import_gcode(file_name):
+    print('hola')
+    m = machine(['X','Y','Z','F','S'])
+    m.import_file(file_name)
+    m.process()
+    d = blender_driver()
+    d.load_data(m.commands)
+    d.drive()
+    print('finished parsing... done')
+
+
+DEBUG= False
+from bpy.props import *
+
+def tripleList(list1):
+    list3 = []
+    for elt in list1:
+        list3.append((elt,elt,elt))
+    return list3
+
+theMergeLimit = 4
+theCodec = 1 
+theCircleRes = 1
