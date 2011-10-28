@@ -61,6 +61,8 @@ extrusion_diameter = 0.4
 # UI #
 ######
 
+
+#panel blender maker
 class BMUI(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
@@ -71,11 +73,16 @@ class BMUI(bpy.types.Panel):
     scaleYval=0
     scaleZval=0
     randomMag=0
+    randomFact=0
+    artisanActv=0
     def draw(self, context):
         global scaleXval
         global scaleYval
         global scaleZval
         global randomMag
+        global randomFact
+        global artisanActv
+
         #capture
         layout = self.layout
         obj = context.object
@@ -121,15 +128,27 @@ class BMUI(bpy.types.Panel):
         row = col.row()
         row.prop( scene, "randomMagnitude" )
         row = col.row()
+        row.prop( scene, "randomFactor" )
+        row = col.row()
         row.operator("object.randomize", text="Randomize")
+        
+        box = layout.separator()        
 
+        col = layout.column(align=True)
+        row = col.row()
+        row.label(text="Artisan mode:", icon='SCULPTMODE_HLT')
+        row.prop( scene, "artisanActive" )
+        
+        artisanActv = bpy.context.scene.artisanActive
         scaleXval = bpy.context.scene.scaleX
         scaleYval = bpy.context.scene.scaleY
         scaleZval = bpy.context.scene.scaleZ
 
         randomMag = bpy.context.scene.randomMagnitude
-
-
+        randomFact = bpy.context.scene.randomFactor
+        artisanActv = bpy.context.scene.artisanActive
+        
+#panel blender maker GCODE.
 class BMUI_GCODE(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
@@ -144,6 +163,30 @@ class BMUI_GCODE(bpy.types.Panel):
         col.label(text="GCODE:")
         row = col.row()
         row.operator("export.gcode", text="Export")
+
+
+class BMUI_META(bpy.types.Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+    bl_label = "Blender Maker: Object Metadata"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.object
+        scene = context.scene
+        
+        col = layout.column(align=True)
+        row = col.row()
+        row = layout.row()
+        
+        col.label(text="RFID metadata", icon='RNA_ADD')
+        col = layout.column()
+        col = layout.column_flow(columns=5,align=True)
+        row.operator("object.readrfid", text="Read")
+        row.operator("object.writerfid", text="Write")        
+
+
 
 
 #############
@@ -197,6 +240,37 @@ class randomizeObject(bpy.types.Operator):
         randomize2()
         return {'FINISHED'}
 
+class readRFID(bpy.types.Operator):
+    ''''''
+    bl_idname = "object.readrfid"
+    bl_label = "Read the rfid metadata"
+
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object != None
+
+    def execute(self, context):
+        print("** In read metadata.")
+        read_rfid()
+        return {'FINISHED'}
+
+class writeRFID(bpy.types.Operator):
+    ''''''
+    bl_idname = "object.writerfid"
+    bl_label = "Write the rfid metadata"
+
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object != None
+
+    def execute(self, context):
+        print("** In write metadata.")
+        write_rfid()
+        return {'FINISHED'}
+
+
 
 class ExportSTL(bpy.types.Operator, ExportHelper):
     '''
@@ -248,6 +322,10 @@ def scale_z(self, context):
     obj = context.object
     obj.scale[2] = scaleZval
 
+def artisan_actv(self,context):
+    print("** In artisan mode event")
+    print(artisanActv)
+
 def ASCIICheck(self, context):
     print("** in scale ASCII check")
     #ASCIIcheckstate = true
@@ -259,11 +337,13 @@ def ASCIICheck(self, context):
 ##############
 
 def register():
-
     bpy.utils.register_class(AlignOperator)
     bpy.utils.register_class(randomizeObject)
+    bpy.utils.register_class(readRFID)
+    bpy.utils.register_class(writeRFID)
     bpy.utils.register_class(BMUI)
     bpy.utils.register_class(BMUI_GCODE)
+    bpy.utils.register_class(BMUI_META)
     bpy.utils.register_class(ExportSTL)
     bpy.utils.register_class(ExportGcode)
     #bpy.types.INFO_MT_file_import.append(menu_func)
@@ -289,7 +369,19 @@ def register():
                                                      default = 0, min = -20, max = 20, 
                                                      description = "Randomize object")
     
+    
+    scnType = bpy.types.Scene
+    scnType.randomFactor = bpy.props.FloatProperty( name = "Randomfactor", 
+                                                     default = 0, min = 0, max = 5, 
+                                                     description = "Randomize factor")
 
+
+    scnType = bpy.types.Scene
+    scnType.artisanActive = bpy.props.BoolProperty( name = "Active", 
+                                                     default = 1, 
+                                                     description = "Artisan mode checkbox",update=artisan_actv)
+    
+    
 
     scale = FloatVectorProperty(name="Scale",
         description="Maximum scale randomization over each axis",
@@ -411,13 +503,14 @@ def randomize():
                             mesh.vertices[index].co[1]= verticeref.co[1]+randy
                         else:
                             print("was already")
-                        step=step=randomMag
+                        step=randomMag
                     else:
                         print("step salta")
                     step=step-1
 
 
 def randomize2():
+
     obj = context.object
     
     mesh = obj.data
@@ -427,7 +520,8 @@ def randomize2():
 
     topz=copyverts[0].co[2]
     bottomz=copyverts[0].co[2]
-        
+   
+    
     #find topz and bottomz
     for vertice in copyverts:
         if(vertice.co[2]>topz):
@@ -438,21 +532,31 @@ def randomize2():
     print("** The vertices:")
     print("top="+str(topz)+",bottom="+str(bottomz))
 
+    lala=randomFact
     step=randomMag
 
     #pass to all the vertices.
     for index,verticeref in enumerate(copyverts):
-        #print("********X:"+str(verticeref.co[0])+";Y:"+str(verticeref.co[1])+";Z:"+str(verticeref.co[2]))        
-        
         if(step==0):
             r,phi=cmath.polar(complex(verticeref.co[0],verticeref.co[1]))
-            r=random.uniform(-10,10)+r
+            r=random.uniform(-randomFact,randomFact)+r
             x=cmath.rect(r,phi)
             mesh.vertices[index].co[0]= x.real
             mesh.vertices[index].co[1]= x.imag
             step=randomMag
         else:
             step=step-1
+
+
+
+def read_rfid():
+    print("Reading RFID")
+
+def write_rfid():
+    print("Writing RFID")
+
+
+
 
 
 #################################
