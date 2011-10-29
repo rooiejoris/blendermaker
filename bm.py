@@ -55,12 +55,13 @@ from bpy.props import IntProperty, BoolProperty, FloatVectorProperty
 import random
 import math
 import cmath
+import webbrowser
+
 extrusion_diameter = 0.4 
 
 ######
 # UI #
 ######
-
 
 #panel blender maker
 class BMUI(bpy.types.Panel):
@@ -73,6 +74,7 @@ class BMUI(bpy.types.Panel):
     scaleYval=0
     scaleZval=0
     randomMag=0
+    dialogRF=0
     randomFact=0
     artisanActv=0
     def draw(self, context):
@@ -80,6 +82,7 @@ class BMUI(bpy.types.Panel):
         global scaleYval
         global scaleZval
         global randomMag
+        global dialogRF
         global randomFact
         global artisanActv
 
@@ -131,7 +134,7 @@ class BMUI(bpy.types.Panel):
         row.prop( scene, "randomFactor" )
         row = col.row()
         row.operator("object.randomize", text="Randomize")
-        
+
         box = layout.separator()        
 
         col = layout.column(align=True)
@@ -146,6 +149,7 @@ class BMUI(bpy.types.Panel):
 
         randomMag = bpy.context.scene.randomMagnitude
         randomFact = bpy.context.scene.randomFactor
+        dialogRF = bpy.context.scene.dialog
         artisanActv = bpy.context.scene.artisanActive
         
 #panel blender maker GCODE.
@@ -164,7 +168,7 @@ class BMUI_GCODE(bpy.types.Panel):
         row = col.row()
         row.operator("export.gcode", text="Export")
 
-
+#panel metadata
 class BMUI_META(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
@@ -183,16 +187,26 @@ class BMUI_META(bpy.types.Panel):
         col.label(text="RFID metadata", icon='RNA_ADD')
         col = layout.column()
         col = layout.column_flow(columns=5,align=True)
+        
         row.operator("object.readrfid", text="Read")
         row.operator("object.writerfid", text="Write")        
+        
+        col = layout.column(align=True)
+        row = col.row()
+        row = layout.row()
+        row = col.row()
+        row.prop(scene,"dialog")
+        
 
+        row = col.row()
+        row.operator("object.openurl",text="Open Web object")
+        
 
 
 
 #############
 # Operators #
 #############
-
 
 class ExportGcode(bpy.types.Operator):
     ''''''
@@ -267,7 +281,24 @@ class writeRFID(bpy.types.Operator):
 
     def execute(self, context):
         print("** In write metadata.")
+        #webbrowser.open('http://hackaday.com')
+
         write_rfid()
+        return {'FINISHED'}
+
+class openURL(bpy.types.Operator):
+    ''''''
+    bl_idname = "object.openurl"
+    bl_label = "Open the URL"
+
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object != None
+
+    def execute(self, context):
+        print("in open url operator")
+        webbrowser.open(dialogRF)
         return {'FINISHED'}
 
 
@@ -341,6 +372,7 @@ def register():
     bpy.utils.register_class(randomizeObject)
     bpy.utils.register_class(readRFID)
     bpy.utils.register_class(writeRFID)
+    bpy.utils.register_class(openURL)
     bpy.utils.register_class(BMUI)
     bpy.utils.register_class(BMUI_GCODE)
     bpy.utils.register_class(BMUI_META)
@@ -374,6 +406,11 @@ def register():
     scnType.randomFactor = bpy.props.FloatProperty( name = "Randomfactor", 
                                                      default = 0, min = 0, max = 5, 
                                                      description = "Randomize factor")
+
+
+    scnType = bpy.types.Scene
+    scnType.dialog = bpy.props.StringProperty( name = "Tag memory:")
+
 
 
     scnType = bpy.types.Scene
@@ -532,7 +569,6 @@ def randomize2():
     print("** The vertices:")
     print("top="+str(topz)+",bottom="+str(bottomz))
 
-    lala=randomFact
     step=randomMag
 
     #pass to all the vertices.
@@ -548,8 +584,8 @@ def randomize2():
             step=step-1
 
 
-
 def read_rfid():
+    print(dialogRF)
     print("Reading RFID")
 
 def write_rfid():
@@ -559,9 +595,9 @@ def write_rfid():
 
 
 
-#################################
-#CLASSSSSSSSSSSSSSSSS  and GCODE#
-#################################
+##################
+#CLASes and GCODE#
+##################
 class tool:
     def __init__(self,name='null tool'):
         self.name = name
