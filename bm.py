@@ -56,6 +56,7 @@ import random
 import math
 import cmath
 import webbrowser
+import subprocess as sub
 
 extrusion_diameter = 0.4 
 
@@ -63,11 +64,28 @@ extrusion_diameter = 0.4
 # UI #
 ######
 
+#panel blender maker GCODE.
+class BMUI_GCODE(bpy.types.Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+    bl_label = "Blender Maker: Object implementation"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.object
+        scene = context.scene
+        col = layout.column(align=True)
+        col.label(text="Skeinforge:")
+        row = col.row()
+        row.operator("export.gcode", text="Export to GCODE")
+
+
 #panel blender maker
 class BMUI(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
-    bl_label = "Blender Maker"
+    bl_label = "Blender Maker: Object model"
     bl_context = "objectmode"
 
     scaleXval=0
@@ -151,22 +169,6 @@ class BMUI(bpy.types.Panel):
         randomFact = bpy.context.scene.randomFactor
         dialogRF = bpy.context.scene.dialog
         artisanActv = bpy.context.scene.artisanActive
-        
-#panel blender maker GCODE.
-class BMUI_GCODE(bpy.types.Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS'
-    bl_label = "Blender Maker: GCODE"
-    bl_context = "objectmode"
-
-    def draw(self, context):
-        layout = self.layout
-        obj = context.object
-        scene = context.scene
-        col = layout.column(align=True)
-        col.label(text="GCODE:")
-        row = col.row()
-        row.operator("export.gcode", text="Export")
 
 #panel metadata
 class BMUI_META(bpy.types.Panel):
@@ -200,29 +202,68 @@ class BMUI_META(bpy.types.Panel):
 
         row = col.row()
         row.operator("object.openurl",text="Open Web object")
+
+
+
+class DialogOperator(bpy.types.Operator):
+    bl_idname = "object.dialog_operator"
+    bl_label = "RFID data:"
+
+    my_string = bpy.props.StringProperty(name="",default="#$%")
+    
+    def execute(self, context):
+        print("Dialog Runs")
+        
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
         
 
 
 
+        
+
 #############
 # Operators #
 #############
+
+# class ExportGcode(bpy.types.Operator):
+#     ''''''
+#     bl_idname = "export.gcode"
+#     bl_label = "Align Selected To Active"
+
+#     @classmethod
+#     def poll(cls, context):
+#         return context.active_object != None
+
+#     def execute(self, context):
+#         print("In export GCODE")
+#         print("executing.")
+#         import_gcode("/home/miguel/objects/test2.gcode")
+#         return {'FINISHED'}
+
 
 class ExportGcode(bpy.types.Operator):
     ''''''
     bl_idname = "export.gcode"
     bl_label = "Align Selected To Active"
 
+
     @classmethod
     def poll(cls, context):
         return context.active_object != None
 
     def execute(self, context):
-        print("In export GCODE")
-        print("executing.")
-        import_gcode("/home/miguel/objects/test2.gcode")
+        skpath="/home/miguel/tecroom/replicatorg-0025/skein_engines/skeinforge-0006/"
+        objpath="/home/miguel/objects"
+        print("****In export GCODE")
+        print("**Exporting...")
+        skein_launcher(skpath,objpath)
+        print("**Finished")
         return {'FINISHED'}
-
 
 
 class AlignOperator(bpy.types.Operator):
@@ -335,6 +376,8 @@ class ExportSTL(bpy.types.Operator, ExportHelper):
         return {'FINISHED'}
 
 
+
+
 ##########
 # Events #
 ##########
@@ -373,11 +416,12 @@ def register():
     bpy.utils.register_class(readRFID)
     bpy.utils.register_class(writeRFID)
     bpy.utils.register_class(openURL)
-    bpy.utils.register_class(BMUI)
     bpy.utils.register_class(BMUI_GCODE)
+    bpy.utils.register_class(BMUI)
     bpy.utils.register_class(BMUI_META)
     bpy.utils.register_class(ExportSTL)
     bpy.utils.register_class(ExportGcode)
+    bpy.utils.register_class(DialogOperator) 
     #bpy.types.INFO_MT_file_import.append(menu_func)
 
 
@@ -430,7 +474,9 @@ def register():
 def unregister():
     bpy.utils.register_class(AlignOperator)
     bpy.utils.register_class(randomizeObject)
+    bpy.utils.register_class(BMUI_GCODE)
     bpy.utils.register_class(BMUI)
+    bpy.utils.register_class(BMUI_META)
     bpy.utils.register_class(ExportSTL)
     bpy.utils.register_class(ExportGcode)
     #bpy.types.INFO_MT_file_import.append(menu_func)
@@ -585,8 +631,21 @@ def randomize2():
 
 
 def read_rfid():
-    print(dialogRF)
-    print("Reading RFID")
+    rfidpath="./2.60/scripts/addons/bm/"
+    print("********")
+    print(rfidpath+"rfidreader")
+    print("********")
+    print("Reading RFID...")
+    
+    rfiddata="jajajajaj"
+
+    bpy.ops.object.dialog_operator('INVOKE_DEFAULT') 
+    #p = sub.Popen(rfidpath+"rfidreader",stdout=sub.PIPE,stderr=sub.PIPE)
+    #output, errors = p.communicate()
+    #print(output)
+    #dialogRF=output[len(output)-12:]
+    #dialogRF="lalalahoho"
+    #print(dialogRF)
 
 def write_rfid():
     print("Writing RFID")
@@ -934,3 +993,23 @@ def tripleList(list1):
 theMergeLimit = 4
 theCodec = 1 
 theCircleRes = 1
+
+def skein_launcher(skpath,objpath):
+    print("In skein launcher")
+    obj = context.object
+    print(obj.name)
+    
+    print(str(skpath)+"skeinforge.py  -p "+str(skpath)+"prefs/skeinforge/export.csv "+objpath+"/"+str(obj.name)+".stl")
+    #os.system(str(skpath)+"skeinforge.py  -p "+str(skpath)+"prefs/skeinforge/"+objpath+"/"+str(obj.name)+".stl")
+    os.system(str(skpath)+"skeinforge.py  -p "+str(skpath)+"prefs/skeinforge/ "+objpath+"/vaas4.stl")
+
+    # if(os.system(path+"skeinforge.py  -p "+path+"prefs/skeinforge/export.csv /home/miguel/objects/" +obj.name+".stl")):
+    #     print("sucess")
+    # else:
+    #     print("Error: Wrong path ")
+        
+
+
+
+
+
