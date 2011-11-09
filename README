@@ -5,14 +5,18 @@
 
 Blender Maker is a Blender Python script for artworks with open hardware 3d printer, Reprap like.
 
-- Uses the Export Import stl extension:
+* Uses:
+
+- The Export Import stl blender extension:
 http://wiki.blender.org/index.php/Extensions:2.5/Py/Scripts/Import-Export/STL
+- lib-touchatag-1.0 library:
+https://github.com/andypc/lib-touchatag-1.0
 
 
-** TODO:
+* TODO:
 
-- correct ui and random.
-- add gcode support.
+- config file, paths.
+- Manage rfid Data and URL.
 
 
 

@@ -456,7 +456,7 @@ def register():
     scnType.dialog = bpy.props.StringProperty( name = "Tag memory:")
 
 
-
+    
     scnType = bpy.types.Scene
     scnType.artisanActive = bpy.props.BoolProperty( name = "Active", 
                                                      default = 1, 
@@ -631,25 +631,24 @@ def randomize2():
 
 
 def read_rfid():
-    rfidpath="./2.60/scripts/addons/bm/"
+    rfidpath="./2.60/scripts/addons/bm/lib-touchatag-1.0/"
     print("********")
-    print(rfidpath+"rfidreader")
-    print("********")
-    print("Reading RFID...")
-    
-    rfiddata="jajajajaj"
-
-    bpy.ops.object.dialog_operator('INVOKE_DEFAULT') 
-    #p = sub.Popen(rfidpath+"rfidreader",stdout=sub.PIPE,stderr=sub.PIPE)
-    #output, errors = p.communicate()
-    #print(output)
-    #dialogRF=output[len(output)-12:]
-    #dialogRF="lalalahoho"
-    #print(dialogRF)
+    print("* Reading RFID...")
+    #bpy.ops.object.dialog_operator('INVOKE_DEFAULT') 
+    p = sub.Popen(rfidpath+"rfidreader",stdout=sub.PIPE,stderr=sub.PIPE)
+    output, errors = p.communicate()
+    print(output[len(output)-12:])
 
 def write_rfid():
-    print("Writing RFID")
+    rfidpath="./2.60/scripts/addons/bm/lib-touchatag-1.0/"
+    print("\n************")
+    print("\n* Writing RFID:"+str(dialogRF))
 
+    os.system(rfidpath+"rfidwriter "+dialogRF)
+    print("\n done.")
+    print("\n************")
+
+    
 
 
 
@@ -802,7 +801,6 @@ class blender_driver(driver):
             if isinstance(i,layer):
                 count += 1
         print('has '+str(count)+' layers')
-        
         
         print('creating poly lines')
         if 'profile' in bpy.data.objects:
@@ -1000,7 +998,6 @@ def skein_launcher(skpath,objpath):
     print(obj.name)
     
     print(str(skpath)+"skeinforge.py  -p "+str(skpath)+"prefs/skeinforge/export.csv "+objpath+"/"+str(obj.name)+".stl")
-    #os.system(str(skpath)+"skeinforge.py  -p "+str(skpath)+"prefs/skeinforge/"+objpath+"/"+str(obj.name)+".stl")
     os.system(str(skpath)+"skeinforge.py  -p "+str(skpath)+"prefs/skeinforge/ "+objpath+"/vaas4.stl")
 
     # if(os.system(path+"skeinforge.py  -p "+path+"prefs/skeinforge/export.csv /home/miguel/objects/" +obj.name+".stl")):
