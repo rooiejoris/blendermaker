@@ -55,8 +55,8 @@ int read_notes(char *notes) {
 			/* Get hex data */
 			//string = touchatag_tag_return_hex_data_mem (&tag[0]);
 			//touchatag_tag_print_ascii_all_data_mem (&tag[0]);
-			//printf("*** RFID data");
-			touchatag_tag_print_hex_all_data_mem(&tag[0]);
+			printf("*** RFID data");
+			//touchatag_tag_print_hex_all_data_mem(&tag[0]);
 			//printf("aaaaaaaaaaaaa");
 			//string_new=touchatag_tag_return_hex_all_data_mem(&tag[0]);
 
